@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Together ❤️ October 7</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="view-pane" id="my-pane">
+            <h2>My Document</h2>
+            <div class="controls">
+                <label for="my-pdf-upload">Upload Your PDF:</label>
+                <input type="file" id="my-pdf-upload">
+                <button id="dark-mode-btn">Toggle Dark Mode</button>
+            </div>
+            <div id="my-pdf-view" class="pdf-view">
+                <div id="my-highlight" class="highlight self"></div>
+            </div>
+        </div>
+
+        <div class="view-pane" id="her-pane">
+            <h2>Her Document (<span id="connection-status">Connecting...</span>)</h2>
+            <p id="her-file-status">Waiting for her to upload a file...</p>
+            <div id="her-pdf-view" class="pdf-view">
+                <div id="her-highlight" class="highlight partner"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>

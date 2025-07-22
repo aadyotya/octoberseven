@@ -1,0 +1,64 @@
+/* Basic Setup */
+body {
+    font-family: sans-serif;
+    background-color: #f0f0f0;
+    color: #333;
+    transition: background-color 0.3s, color 0.3s;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent body scroll */
+}
+
+.main-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
+
+.view-pane {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+#my-pane { border-right: 2px solid #ddd; }
+#her-pane #her-highlight { background-color: rgba(255, 105, 180, 0.5); } /* Partner highlight is pink */
+.controls { margin-bottom: 10px; }
+h2 { text-align: center; margin-top: 0; }
+#connection-status { color: #ff8c00; }
+
+.pdf-view {
+    position: relative;
+    border: 1px solid #ccc;
+    overflow: auto; /* IMPORTANT for scrolling */
+    flex-grow: 1; /* Make it fill available space */
+    background-color: #e9e9e9;
+}
+
+canvas {
+    display: block;
+    margin: 10px auto;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.highlight {
+    position: absolute;
+    width: 100%;
+    height: 80px;
+    pointer-events: none;
+    transition: top 0.2s ease-out;
+    border-left: 3px solid red;
+    box-sizing: border-box;
+}
+
+/* Dark Mode 🌙 */
+body.dark-mode {
+    background-color: #121212;
+    color: #f0f0f0;
+}
+body.dark-mode #my-pane { border-right-color: #444; }
+body.dark-mode .pdf-view { background-color: #2a2a2a; border-color: #444; }
+body.dark-mode canvas { filter: invert(1) hue-rotate(180deg); }
