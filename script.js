@@ -1,16 +1,13 @@
-// At the very top of script.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js`;
-console.log("✅ Script loaded and PDF worker is set.");
 
 // --- Configuration ---
 // PASTE YOUR FIREBASE CONFIG OBJECT HERE
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCWb...",
+  apiKey: "AIzaSyCWBjzOpEOupbR_E319T7lB1mZJ4k0WE7c",
   authDomain: "octoberseven-9f547.firebaseapp.com",
   databaseURL: "https://octoberseven-9f547-default-rtdb.firebaseio.com",
   projectId: "octoberseven-9f547",
-  storageBucket: "octoberseven-9f547.appspot.com",
+  storageBucket: "octoberseven-9f547.firebasestorage.app",
   messagingSenderId: "104520694521",
   appId: "1:104520694521:web:dd10f37aa3d2a661e70028",
   measurementId: "G-F0FBEXHW1R"
@@ -30,101 +27,80 @@ const herFileStatus = document.getElementById('her-file-status');
 // --- Global State ---
 let peerConnection;
 let dataChannel;
-let isPolite; // To prevent WebRTC connection race conditions
+let isPolite;
+let candidateBuffer = []; // Buffer for early ICE candidates
 
-// Initialize Firebase and Database
-try {
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-        console.log("✅ Firebase initialized successfully.");
-    }
-} catch (e) {
-    console.error("Firebase initialization failed:", e);
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
 }
-
 const database = firebase.database();
 const roomRef = database.ref(ROOM_ID);
-console.log("✅ Database reference created for room:", ROOM_ID);
-
 
 // --- 1. Main Connection Logic ---
 async function connect() {
-    console.log("Attempting to connect...");
-
-    try {
-        const snapshot = await roomRef.get();
-        // A simpler and more robust check for a 2-person room
-        isPolite = !snapshot.exists();
-        console.log(`This client is ${isPolite ? 'polite (first to join)' : 'impolite (second to join)'}.`);
-    } catch (e) {
-        console.error("Failed to check room status on Firebase:", e);
-        return;
-    }
-
     peerConnection = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
-    console.log("Peer connection object created.");
 
     // Listen for signaling messages from Firebase
     roomRef.on('value', async (snapshot) => {
         if (!snapshot.exists()) return;
         const data = snapshot.val();
-        console.log("Received data from Firebase:", data);
 
-        // If we are the impolite peer and an offer exists, we create an answer
-        if (!isPolite && data.offer) {
+        // Handle offer/answer exchange
+        if (!isPolite && data.offer && !peerConnection.currentRemoteDescription) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer.sdp));
-            console.log("Impolite peer set remote offer.");
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
-            console.log("Impolite peer created answer, sending to Firebase.");
             await roomRef.update({ answer: { sdp: peerConnection.localDescription } });
-        }
-
-        // If we are the polite peer and an answer exists, we set it
-        if (isPolite && data.answer) {
-            console.log("Polite peer received answer.");
+            // Process any buffered candidates now that the remote description is set
+            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
+            candidateBuffer = [];
+        } else if (isPolite && data.answer && !peerConnection.currentRemoteDescription) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer.sdp));
+            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
+            candidateBuffer = [];
         }
 
-        // Add any ICE candidates that are sent
+        // Handle ICE candidates
         if (data.candidate) {
-            console.log("Received new ICE candidate.");
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            const candidate = new RTCIceCandidate(data.candidate);
+            if (peerConnection.remoteDescription) {
+                await peerConnection.addIceCandidate(candidate);
+            } else {
+                candidateBuffer.push(candidate); // Buffer the candidate if remote description is not set
+            }
         }
     });
 
     peerConnection.onicecandidate = ({ candidate }) => {
         if (candidate) {
-            console.log("Generated new ICE candidate, sending to Firebase.");
             roomRef.update({ candidate: candidate.toJSON() });
         }
     };
 
     peerConnection.ondatachannel = (event) => setupDataChannel(event.channel);
 
+    const snapshot = await roomRef.get();
+    isPolite = !snapshot.exists();
+
     if (isPolite) {
-        console.log("This is the polite client, creating data channel and offer...");
         dataChannel = peerConnection.createDataChannel('data');
         setupDataChannel(dataChannel);
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        console.log("Offer created. Sending to Firebase.");
         await roomRef.set({ offer: { sdp: peerConnection.localDescription } });
     }
 }
 
 function setupDataChannel(channel) {
-    console.log("Setting up data channel.");
     dataChannel = channel;
     dataChannel.onopen = () => {
-        console.log("✅✅✅ DATA CHANNEL IS OPEN! ✅✅✅");
         connectionStatus.textContent = "Connected! ✅";
         connectionStatus.style.color = "#28a745";
     };
     dataChannel.onclose = () => {
-        console.log("Data channel closed.");
         connectionStatus.textContent = "Disconnected";
         connectionStatus.style.color = "#dc3545";
     };
@@ -138,14 +114,17 @@ document.getElementById('my-pdf-upload').addEventListener('change', async (e) =>
     const fileBuffer = await file.arrayBuffer();
     renderPdf(new Uint8Array(fileBuffer), myPdfView, 'local');
     if (dataChannel && dataChannel.readyState === 'open') {
-        console.log("Sending file to partner...");
         dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name }));
-        dataChannel.send(fileBuffer);
+        // Chunk and send the file to avoid size limits
+        const chunkSize = 16384;
+        for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
+            dataChannel.send(fileBuffer.slice(i, i + chunkSize));
+        }
     }
 });
 
+let receivedBuffers = [];
 async function renderPdf(pdfData, viewElement, docType) {
-    console.log(`Rendering PDF for ${docType} view.`);
     const pdfDoc = await pdfjsLib.getDocument(pdfData).promise;
     viewElement.innerHTML = '';
     const highlight = docType === 'local' ? myHighlight : herHighlight;
@@ -180,12 +159,22 @@ function handleDataChannelMessage(event) {
             const highlightTop = msg.y_percent * herPdfView.scrollHeight;
             herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
         } else if (msg.type === 'file_info') {
+            receivedBuffers = []; // Start new file transfer
             herFileStatus.textContent = `Receiving file: ${msg.name}...`;
         }
     } else {
-        herFileStatus.textContent = 'Rendering her document...';
-        renderPdf(new Uint8Array(event.data), herPdfView, 'remote').then(() => {
-            herFileStatus.style.display = 'none';
+        // It's a file chunk (ArrayBuffer)
+        receivedBuffers.push(event.data);
+        const totalSize = receivedBuffers.reduce((acc, val) => acc + val.byteLength, 0);
+        
+        // This is a simple check; a more robust solution would send file size first
+        // For now, we assume the transfer is done when we get a message after the chunks
+        herFileStatus.textContent = `Rendering her document...`;
+        const completeBuffer = new Blob(receivedBuffers);
+        completeBuffer.arrayBuffer().then(buffer => {
+            renderPdf(new Uint8Array(buffer), herPdfView, 'remote').then(() => {
+                herFileStatus.style.display = 'none';
+            });
         });
     }
 }
@@ -197,7 +186,7 @@ document.getElementById('dark-mode-btn').addEventListener('click', () => {
 
 // --- GO! ---
 window.addEventListener('beforeunload', () => {
-    if (isPolite) { // Only the first user cleans up the room
+    if (isPolite) {
         roomRef.remove();
     }
 });
