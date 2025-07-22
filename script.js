@@ -4,12 +4,16 @@ console.log("✅ Script loaded and PDF worker is set.");
 
 // --- Configuration ---
 // PASTE YOUR FIREBASE CONFIG OBJECT HERE
+// Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIza...",
-    authDomain: "your-project-id.firebaseapp.com",
-    databaseURL: "https://your-project-id.firebaseio.com",
-    projectId: "your-project-id",
-    // ...etc
+  apiKey: "AIzaSyCWb...",
+  authDomain: "octoberseven-9f547.firebaseapp.com",
+  databaseURL: "https://octoberseven-9f547-default-rtdb.firebaseio.com",
+  projectId: "octoberseven-9f547",
+  storageBucket: "octoberseven-9f547.appspot.com",
+  messagingSenderId: "104520694521",
+  appId: "1:104520694521:web:dd10f37aa3d2a661e70028",
+  measurementId: "G-F0FBEXHW1R"
 };
 
 // --- App Constants ---
