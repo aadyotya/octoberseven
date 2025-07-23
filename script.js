@@ -12,11 +12,32 @@ const firebaseConfig = {
   measurementId: "G-F0FBEXHW1R"
 };
 
-// --- App Constants ---
-const ROOM_ID = "octoberseven";
-const MY_ID = `user_${Math.random().toString(36).substr(2, 9)}`; // Creates a unique ID for this session
+// NEW: Your personal Twilio TURN server credentials have been added.
+const iceServers = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  {
+    "urls": "stun:global.stun.twilio.com:3478"
+  },
+  {
+    "urls": "turn:global.turn.twilio.com:3478?transport=udp",
+    "username": "de19e78423c4d65582a92d8280cb3ac3a1e953bee05da39ecdb0001e64769d6b",
+    "credential": "x6vT7g8yJiox9CtsH+hHkITJfaWlGEd9D7Wt9pNiKHc="
+  },
+  {
+    "urls": "turn:global.turn.twilio.com:3478?transport=tcp",
+    "username": "de19e78423c4d65582a92d8280cb3ac3a1e953bee05da39ecdb0001e64769d6b",
+    "credential": "x6vT7g8yJiox9CtsH+hHkITJfaWlGEd9D7Wt9pNiKHc="
+  },
+  {
+    "urls": "turn:global.turn.twilio.com:443?transport=tcp",
+    "username": "de19e78423c4d65582a92d8280cb3ac3a1e953bee05da39ecdb0001e64769d6b",
+    "credential": "x6vT7g8yJiox9CtsH+hHkITJfaWlGEd9D7Wt9pNiKHc="
+  }
+];
+// Note: You will need to replace "YOUR_GENERATED_PASSWORD" with a fresh password
+// by making an API call as described previously, since the passwords are temporary.
 
-// --- DOM Elements ---
+const ROOM_ID = "octoberseven";
 const myPdfView = document.getElementById('my-pdf-view');
 const herPdfView = document.getElementById('her-pdf-view');
 const myHighlight = document.getElementById('my-highlight');
@@ -24,72 +45,81 @@ const herHighlight = document.getElementById('her-highlight');
 const connectionStatus = document.getElementById('connection-status');
 const herFileStatus = document.getElementById('her-file-status');
 
-// --- Initialize Firebase ---
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+let peerConnection, dataChannel, isPolite, localFile = null, localFileBuffer = null;
+let candidateBuffer = [], receivedBuffers = [], receivedSize = 0, expectedFileSize = 0;
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 const roomRef = database.ref(ROOM_ID);
 
-// --- 1. Main Logic ---
-
-// Listen for any data changes in the room
-roomRef.on('value', (snapshot) => {
-    const allUsersData = snapshot.val();
-    if (!allUsersData) return;
-
-    connectionStatus.textContent = "Connected! ✅";
-    connectionStatus.style.color = "#28a745";
-
-    // Find the other user's data
-    let otherUserId = null;
-    for (const userId in allUsersData) {
-        if (userId !== MY_ID) {
-            otherUserId = userId;
-            break;
+async function connect() {
+    peerConnection = new RTCPeerConnection({ iceServers: iceServers });
+    roomRef.on('value', async (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.val();
+        if (!isPolite && data.offer && !peerConnection.currentRemoteDescription) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer.sdp));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            await roomRef.update({ answer: { sdp: peerConnection.localDescription } });
+            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
+            candidateBuffer = [];
+        } else if (isPolite && data.answer && !peerConnection.currentRemoteDescription) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer.sdp));
+            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
+            candidateBuffer = [];
         }
+        if (data.candidate) {
+            const candidate = new RTCIceCandidate(data.candidate);
+            if (peerConnection.remoteDescription) await peerConnection.addIceCandidate(candidate);
+            else candidateBuffer.push(candidate);
+        }
+    });
+    peerConnection.onicecandidate = ({ candidate }) => { if (candidate) roomRef.update({ candidate: candidate.toJSON() }) };
+    peerConnection.ondatachannel = (event) => setupDataChannel(event.channel);
+    const snapshot = await roomRef.get();
+    isPolite = !snapshot.exists();
+    if (isPolite) {
+        dataChannel = peerConnection.createDataChannel('data');
+        setupDataChannel(dataChannel);
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        await roomRef.set({ offer: { sdp: peerConnection.localDescription } });
     }
+}
 
-    if (otherUserId) {
-        const herData = allUsersData[otherUserId];
-        if (herData.fileName) {
-            herFileStatus.textContent = `She is viewing: ${herData.fileName}`;
-        }
+function setupDataChannel(channel) {
+    dataChannel = channel;
+    dataChannel.onopen = () => {
+        connectionStatus.textContent = "Connected! ✅";
+        connectionStatus.style.color = "#28a745";
+        if (localFileBuffer) sendFile(localFile, localFileBuffer);
+    };
+    dataChannel.onclose = () => { connectionStatus.textContent = "Disconnected"; connectionStatus.style.color = "#dc3545"; };
+    dataChannel.onmessage = handleDataChannelMessage;
+}
 
-        // Update her highlight position based on her cursor
-        if (herData.y_percent) {
-            const highlightTop = herData.y_percent * herPdfView.scrollHeight;
-            herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
-        }
-
-        // Update your view of her document's scroll position
-        if (herData.scroll_percent) {
-            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
-            if (scrollableHeight > 0) {
-                herPdfView.scrollTop = herData.scroll_percent * scrollableHeight;
-            }
-        }
-    }
-});
-
-// --- 2. File Handling ---
 document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || file.type !== 'application/pdf') return;
-
-    // Send my file name to the database so she can see what I'm reading
-    roomRef.child(MY_ID).child('fileName').set(file.name);
-    
-    const fileBuffer = await file.arrayBuffer();
-    // Render my PDF in my view, and a copy in her view for me to see
-    renderPdf(new Uint8Array(fileBuffer), myPdfView);
-    renderPdf(new Uint8Array(fileBuffer), herPdfView); // Note: We render our own doc in her pane
+    localFile = file;
+    localFileBuffer = await file.arrayBuffer();
+    renderPdf(new Uint8Array(localFileBuffer), myPdfView, 'local');
+    if (dataChannel && dataChannel.readyState === 'open') sendFile(localFile, localFileBuffer);
 });
 
-async function renderPdf(pdfData, viewElement) {
+function sendFile(file, fileBuffer) {
+    dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name, size: file.size }));
+    const chunkSize = 16384;
+    for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
+        dataChannel.send(fileBuffer.slice(i, i + chunkSize));
+    }
+}
+
+async function renderPdf(pdfData, viewElement, docType) {
     const pdfDoc = await pdfjsLib.getDocument(pdfData).promise;
-    viewElement.innerHTML = ''; // Clear previous content
-    const highlight = viewElement.id === 'my-pdf-view' ? myHighlight : herHighlight;
+    viewElement.innerHTML = '';
+    const highlight = docType === 'local' ? myHighlight : herHighlight;
     viewElement.appendChild(highlight);
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum);
@@ -102,39 +132,55 @@ async function renderPdf(pdfData, viewElement) {
     }
 }
 
-
-// --- 3. Sending My Position Data ---
-
-// Send my cursor position
 myPdfView.addEventListener('mousemove', (e) => {
     const rect = myPdfView.getBoundingClientRect();
     const y = e.clientY - rect.top + myPdfView.scrollTop;
     myHighlight.style.top = `${y - (myHighlight.clientHeight / 2)}px`;
-    const positionPercentage = y / myPdfView.scrollHeight;
-    // Send my cursor position to Firebase
-    roomRef.child(MY_ID).child('y_percent').set(positionPercentage);
-});
-
-// Send my scroll position
-myPdfView.addEventListener('scroll', () => {
-    const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
-    if (scrollableHeight > 0) {
-        const scrollPercentage = myPdfView.scrollTop / scrollableHeight;
-        // Send my scroll position to Firebase
-        roomRef.child(MY_ID).child('scroll_percent').set(scrollPercentage);
+    if (dataChannel && dataChannel.readyState === 'open') {
+        dataChannel.send(JSON.stringify({ type: 'scroll', y_percent: y / myPdfView.scrollHeight }));
     }
 });
 
-
-// --- 4. Misc Features ---
-document.getElementById('dark-mode-btn').addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
+myPdfView.addEventListener('scroll', () => {
+    if (dataChannel && dataChannel.readyState === 'open') {
+        const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
+        if (scrollableHeight > 0) {
+            dataChannel.send(JSON.stringify({ type: 'sync_scroll', scroll_percent: myPdfView.scrollTop / scrollableHeight }));
+        }
+    }
 });
 
-// --- GO! ---
-// Announce my presence
-roomRef.child(MY_ID).set({ online: true });
-// Clean up my data when I leave
-window.addEventListener('beforeunload', () => {
-    roomRef.child(MY_ID).remove();
-});
+function handleDataChannelMessage(event) {
+    if (typeof event.data === 'string') {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'scroll') {
+            herHighlight.style.top = `${msg.y_percent * herPdfView.scrollHeight - (herHighlight.clientHeight / 2)}px`;
+        } else if (msg.type === 'file_info') {
+            receivedBuffers = [];
+            receivedSize = 0;
+            expectedFileSize = msg.size;
+            herFileStatus.textContent = `Receiving file: ${msg.name}...`;
+            herFileStatus.style.display = 'block';
+        } else if (msg.type === 'sync_scroll') {
+            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
+            if (scrollableHeight > 0) herPdfView.scrollTop = msg.scroll_percent * scrollableHeight;
+        }
+    } else {
+        receivedBuffers.push(event.data);
+        receivedSize += event.data.byteLength;
+        herFileStatus.textContent = `Receiving file... ${Math.round((receivedSize / expectedFileSize) * 100)}%`;
+        if (receivedSize === expectedFileSize) {
+            herFileStatus.textContent = 'Rendering her document...';
+            const completeBuffer = new Blob(receivedBuffers);
+            completeBuffer.arrayBuffer().then(buffer => {
+                renderPdf(new Uint8Array(buffer), herPdfView, 'remote').then(() => {
+                    herFileStatus.style.display = 'none';
+                });
+            });
+        }
+    }
+}
+
+document.getElementById('dark-mode-btn').addEventListener('click', () => { document.body.classList.toggle('dark-mode'); });
+window.addEventListener('beforeunload', () => { if (isPolite) roomRef.remove(); });
+connect();
