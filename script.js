@@ -1,7 +1,6 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js`;
 
 // --- Configuration ---
-// Your Firebase config object
 const firebaseConfig = {
   apiKey: "AIzaSyCWBjzOpEOupbR_E319T7lB1mZJ4k0WE7c",
   authDomain: "octoberseven-9f547.firebaseapp.com",
@@ -15,6 +14,7 @@ const firebaseConfig = {
 
 // --- App Constants ---
 const ROOM_ID = "octoberseven";
+const MY_ID = `user_${Math.random().toString(36).substr(2, 9)}`; // Creates a unique ID for this session
 
 // --- DOM Elements ---
 const myPdfView = document.getElementById('my-pdf-view');
@@ -24,120 +24,72 @@ const herHighlight = document.getElementById('her-highlight');
 const connectionStatus = document.getElementById('connection-status');
 const herFileStatus = document.getElementById('her-file-status');
 
-// --- Global State ---
-let peerConnection;
-let dataChannel;
-let isPolite;
-let localFile = null; // NEW: To store your file info
-let localFileBuffer = null; // NEW: To store your file data
-let candidateBuffer = [];
-let receivedBuffers = [];
-let receivedSize = 0;
-let expectedFileSize = 0;
-
-// Initialize Firebase
+// --- Initialize Firebase ---
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const database = firebase.database();
 const roomRef = database.ref(ROOM_ID);
 
-// --- 1. Main Connection Logic ---
-async function connect() {
-    peerConnection = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    });
+// --- 1. Main Logic ---
 
-    roomRef.on('value', async (snapshot) => {
-        if (!snapshot.exists()) return;
-        const data = snapshot.val();
-        if (!isPolite && data.offer && !peerConnection.currentRemoteDescription) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer.sdp));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            await roomRef.update({ answer: { sdp: peerConnection.localDescription } });
-            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
-            candidateBuffer = [];
-        } else if (isPolite && data.answer && !peerConnection.currentRemoteDescription) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer.sdp));
-            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
-            candidateBuffer = [];
+// Listen for any data changes in the room
+roomRef.on('value', (snapshot) => {
+    const allUsersData = snapshot.val();
+    if (!allUsersData) return;
+
+    connectionStatus.textContent = "Connected! ✅";
+    connectionStatus.style.color = "#28a745";
+
+    // Find the other user's data
+    let otherUserId = null;
+    for (const userId in allUsersData) {
+        if (userId !== MY_ID) {
+            otherUserId = userId;
+            break;
         }
-        if (data.candidate) {
-            const candidate = new RTCIceCandidate(data.candidate);
-            if (peerConnection.remoteDescription) {
-                await peerConnection.addIceCandidate(candidate);
-            } else {
-                candidateBuffer.push(candidate);
+    }
+
+    if (otherUserId) {
+        const herData = allUsersData[otherUserId];
+        if (herData.fileName) {
+            herFileStatus.textContent = `She is viewing: ${herData.fileName}`;
+        }
+
+        // Update her highlight position based on her cursor
+        if (herData.y_percent) {
+            const highlightTop = herData.y_percent * herPdfView.scrollHeight;
+            herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
+        }
+
+        // Update your view of her document's scroll position
+        if (herData.scroll_percent) {
+            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
+            if (scrollableHeight > 0) {
+                herPdfView.scrollTop = herData.scroll_percent * scrollableHeight;
             }
         }
-    });
-
-    peerConnection.onicecandidate = ({ candidate }) => {
-        if (candidate) roomRef.update({ candidate: candidate.toJSON() });
-    };
-    peerConnection.ondatachannel = (event) => setupDataChannel(event.channel);
-
-    const snapshot = await roomRef.get();
-    isPolite = !snapshot.exists();
-
-    if (isPolite) {
-        dataChannel = peerConnection.createDataChannel('data');
-        setupDataChannel(dataChannel);
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        await roomRef.set({ offer: { sdp: peerConnection.localDescription } });
-    }
-}
-
-function setupDataChannel(channel) {
-    dataChannel = channel;
-    dataChannel.onopen = () => {
-        connectionStatus.textContent = "Connected! ✅";
-        connectionStatus.style.color = "#28a745";
-        // NEW: If a file was already loaded before connection, send it now.
-        if (localFileBuffer) {
-            sendFile(localFile, localFileBuffer);
-        }
-    };
-    dataChannel.onclose = () => {
-        connectionStatus.textContent = "Disconnected";
-        connectionStatus.style.color = "#dc3545";
-    };
-    dataChannel.onmessage = handleDataChannelMessage;
-}
-
-// --- 2. File Handling & Transfer ---
-document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file || file.type !== 'application/pdf') return;
-    
-    // NEW: Store the file and its buffer globally
-    localFile = file;
-    localFileBuffer = await file.arrayBuffer();
-    
-    renderPdf(new Uint8Array(localFileBuffer), myPdfView, 'local');
-    
-    // Attempt to send the file immediately if already connected.
-    if (dataChannel && dataChannel.readyState === 'open') {
-        sendFile(localFile, localFileBuffer);
     }
 });
 
-// NEW: Created a reusable function to send the file
-function sendFile(file, fileBuffer) {
-    dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name, size: file.size }));
-    const chunkSize = 16384;
-    for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
-        dataChannel.send(fileBuffer.slice(i, i + chunkSize));
-    }
-}
+// --- 2. File Handling ---
+document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || file.type !== 'application/pdf') return;
 
-async function renderPdf(pdfData, viewElement, docType) {
-    // ... (This function remains unchanged)
+    // Send my file name to the database so she can see what I'm reading
+    roomRef.child(MY_ID).child('fileName').set(file.name);
+    
+    const fileBuffer = await file.arrayBuffer();
+    // Render my PDF in my view, and a copy in her view for me to see
+    renderPdf(new Uint8Array(fileBuffer), myPdfView);
+    renderPdf(new Uint8Array(fileBuffer), herPdfView); // Note: We render our own doc in her pane
+});
+
+async function renderPdf(pdfData, viewElement) {
     const pdfDoc = await pdfjsLib.getDocument(pdfData).promise;
-    viewElement.innerHTML = '';
-    const highlight = docType === 'local' ? myHighlight : herHighlight;
+    viewElement.innerHTML = ''; // Clear previous content
+    const highlight = viewElement.id === 'my-pdf-view' ? myHighlight : herHighlight;
     viewElement.appendChild(highlight);
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum);
@@ -146,67 +98,33 @@ async function renderPdf(pdfData, viewElement, docType) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
         viewElement.appendChild(canvas);
-        const ctx = canvas.getContext('2d');
-        page.render({ canvasContext: ctx, viewport: viewport });
+        page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport });
     }
 }
 
-// --- 3. Highlighting and Data Messages ---
+
+// --- 3. Sending My Position Data ---
+
+// Send my cursor position
 myPdfView.addEventListener('mousemove', (e) => {
     const rect = myPdfView.getBoundingClientRect();
     const y = e.clientY - rect.top + myPdfView.scrollTop;
     myHighlight.style.top = `${y - (myHighlight.clientHeight / 2)}px`;
-    if (dataChannel && dataChannel.readyState === 'open') {
-        const positionPercentage = y / myPdfView.scrollHeight;
-        dataChannel.send(JSON.stringify({ type: 'scroll', y_percent: positionPercentage }));
-    }
+    const positionPercentage = y / myPdfView.scrollHeight;
+    // Send my cursor position to Firebase
+    roomRef.child(MY_ID).child('y_percent').set(positionPercentage);
 });
 
+// Send my scroll position
 myPdfView.addEventListener('scroll', () => {
-    if (dataChannel && dataChannel.readyState === 'open') {
-        const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
-        if (scrollableHeight > 0) {
-            const scrollPercentage = myPdfView.scrollTop / scrollableHeight;
-            dataChannel.send(JSON.stringify({ type: 'sync_scroll', scroll_percent: scrollPercentage }));
-        }
+    const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
+    if (scrollableHeight > 0) {
+        const scrollPercentage = myPdfView.scrollTop / scrollableHeight;
+        // Send my scroll position to Firebase
+        roomRef.child(MY_ID).child('scroll_percent').set(scrollPercentage);
     }
 });
 
-function handleDataChannelMessage(event) {
-    // ... (This function remains unchanged)
-    if (typeof event.data === 'string') {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'scroll') {
-            const highlightTop = msg.y_percent * herPdfView.scrollHeight;
-            herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
-        } else if (msg.type === 'file_info') {
-            receivedBuffers = [];
-            receivedSize = 0;
-            expectedFileSize = msg.size;
-            herFileStatus.textContent = `Receiving file: ${msg.name}...`;
-            herFileStatus.style.display = 'block';
-        } else if (msg.type === 'sync_scroll') {
-            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
-            if (scrollableHeight > 0) {
-                herPdfView.scrollTop = msg.scroll_percent * scrollableHeight;
-            }
-        }
-    } else {
-        receivedBuffers.push(event.data);
-        receivedSize += event.data.byteLength;
-        const progress = Math.round((receivedSize / expectedFileSize) * 100);
-        herFileStatus.textContent = `Receiving file... ${progress}%`;
-        if (receivedSize === expectedFileSize) {
-            herFileStatus.textContent = 'Rendering her document...';
-            const completeBuffer = new Blob(receivedBuffers);
-            completeBuffer.arrayBuffer().then(buffer => {
-                renderPdf(new Uint8Array(buffer), herPdfView, 'remote').then(() => {
-                    herFileStatus.style.display = 'none';
-                });
-            });
-        }
-    }
-}
 
 // --- 4. Misc Features ---
 document.getElementById('dark-mode-btn').addEventListener('click', () => {
@@ -214,9 +132,9 @@ document.getElementById('dark-mode-btn').addEventListener('click', () => {
 });
 
 // --- GO! ---
+// Announce my presence
+roomRef.child(MY_ID).set({ online: true });
+// Clean up my data when I leave
 window.addEventListener('beforeunload', () => {
-    if (isPolite) {
-        roomRef.remove();
-    }
+    roomRef.child(MY_ID).remove();
 });
-connect();
