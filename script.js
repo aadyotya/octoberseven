@@ -28,6 +28,8 @@ const herFileStatus = document.getElementById('her-file-status');
 let peerConnection;
 let dataChannel;
 let isPolite;
+let localFile = null; // NEW: To store your file info
+let localFileBuffer = null; // NEW: To store your file data
 let candidateBuffer = [];
 let receivedBuffers = [];
 let receivedSize = 0;
@@ -49,7 +51,6 @@ async function connect() {
     roomRef.on('value', async (snapshot) => {
         if (!snapshot.exists()) return;
         const data = snapshot.val();
-
         if (!isPolite && data.offer && !peerConnection.currentRemoteDescription) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer.sdp));
             const answer = await peerConnection.createAnswer();
@@ -62,7 +63,6 @@ async function connect() {
             candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
             candidateBuffer = [];
         }
-
         if (data.candidate) {
             const candidate = new RTCIceCandidate(data.candidate);
             if (peerConnection.remoteDescription) {
@@ -76,7 +76,6 @@ async function connect() {
     peerConnection.onicecandidate = ({ candidate }) => {
         if (candidate) roomRef.update({ candidate: candidate.toJSON() });
     };
-
     peerConnection.ondatachannel = (event) => setupDataChannel(event.channel);
 
     const snapshot = await roomRef.get();
@@ -96,6 +95,10 @@ function setupDataChannel(channel) {
     dataChannel.onopen = () => {
         connectionStatus.textContent = "Connected! ✅";
         connectionStatus.style.color = "#28a745";
+        // NEW: If a file was already loaded before connection, send it now.
+        if (localFileBuffer) {
+            sendFile(localFile, localFileBuffer);
+        }
     };
     dataChannel.onclose = () => {
         connectionStatus.textContent = "Disconnected";
@@ -108,18 +111,30 @@ function setupDataChannel(channel) {
 document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || file.type !== 'application/pdf') return;
-    const fileBuffer = await file.arrayBuffer();
-    renderPdf(new Uint8Array(fileBuffer), myPdfView, 'local');
+    
+    // NEW: Store the file and its buffer globally
+    localFile = file;
+    localFileBuffer = await file.arrayBuffer();
+    
+    renderPdf(new Uint8Array(localFileBuffer), myPdfView, 'local');
+    
+    // Attempt to send the file immediately if already connected.
     if (dataChannel && dataChannel.readyState === 'open') {
-        dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name, size: file.size }));
-        const chunkSize = 16384;
-        for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
-            dataChannel.send(fileBuffer.slice(i, i + chunkSize));
-        }
+        sendFile(localFile, localFileBuffer);
     }
 });
 
+// NEW: Created a reusable function to send the file
+function sendFile(file, fileBuffer) {
+    dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name, size: file.size }));
+    const chunkSize = 16384;
+    for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
+        dataChannel.send(fileBuffer.slice(i, i + chunkSize));
+    }
+}
+
 async function renderPdf(pdfData, viewElement, docType) {
+    // ... (This function remains unchanged)
     const pdfDoc = await pdfjsLib.getDocument(pdfData).promise;
     viewElement.innerHTML = '';
     const highlight = docType === 'local' ? myHighlight : herHighlight;
@@ -147,7 +162,6 @@ myPdfView.addEventListener('mousemove', (e) => {
     }
 });
 
-// NEW: Add this event listener for synchronized scrolling
 myPdfView.addEventListener('scroll', () => {
     if (dataChannel && dataChannel.readyState === 'open') {
         const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
@@ -159,6 +173,7 @@ myPdfView.addEventListener('scroll', () => {
 });
 
 function handleDataChannelMessage(event) {
+    // ... (This function remains unchanged)
     if (typeof event.data === 'string') {
         const msg = JSON.parse(event.data);
         if (msg.type === 'scroll') {
@@ -170,7 +185,7 @@ function handleDataChannelMessage(event) {
             expectedFileSize = msg.size;
             herFileStatus.textContent = `Receiving file: ${msg.name}...`;
             herFileStatus.style.display = 'block';
-        } else if (msg.type === 'sync_scroll') { // NEW: Handle the sync_scroll message
+        } else if (msg.type === 'sync_scroll') {
             const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
             if (scrollableHeight > 0) {
                 herPdfView.scrollTop = msg.scroll_percent * scrollableHeight;
