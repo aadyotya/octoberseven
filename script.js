@@ -29,9 +29,9 @@ let peerConnection;
 let dataChannel;
 let isPolite;
 let candidateBuffer = [];
-let receivedBuffers = [];      // CHANGED
-let receivedSize = 0;          // NEW
-let expectedFileSize = 0;      // NEW
+let receivedBuffers = [];
+let receivedSize = 0;
+let expectedFileSize = 0;
 
 // Initialize Firebase
 if (!firebase.apps.length) {
@@ -111,7 +111,6 @@ document.getElementById('my-pdf-upload').addEventListener('change', async (e) =>
     const fileBuffer = await file.arrayBuffer();
     renderPdf(new Uint8Array(fileBuffer), myPdfView, 'local');
     if (dataChannel && dataChannel.readyState === 'open') {
-        // CHANGED: Also send the file size for reliable transfer
         dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name, size: file.size }));
         const chunkSize = 16384;
         for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
@@ -148,6 +147,17 @@ myPdfView.addEventListener('mousemove', (e) => {
     }
 });
 
+// NEW: Add this event listener for synchronized scrolling
+myPdfView.addEventListener('scroll', () => {
+    if (dataChannel && dataChannel.readyState === 'open') {
+        const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
+        if (scrollableHeight > 0) {
+            const scrollPercentage = myPdfView.scrollTop / scrollableHeight;
+            dataChannel.send(JSON.stringify({ type: 'sync_scroll', scroll_percent: scrollPercentage }));
+        }
+    }
+});
+
 function handleDataChannelMessage(event) {
     if (typeof event.data === 'string') {
         const msg = JSON.parse(event.data);
@@ -155,22 +165,22 @@ function handleDataChannelMessage(event) {
             const highlightTop = msg.y_percent * herPdfView.scrollHeight;
             herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
         } else if (msg.type === 'file_info') {
-            // CHANGED: Prepare for new file transfer
             receivedBuffers = [];
             receivedSize = 0;
             expectedFileSize = msg.size;
             herFileStatus.textContent = `Receiving file: ${msg.name}...`;
             herFileStatus.style.display = 'block';
+        } else if (msg.type === 'sync_scroll') { // NEW: Handle the sync_scroll message
+            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
+            if (scrollableHeight > 0) {
+                herPdfView.scrollTop = msg.scroll_percent * scrollableHeight;
+            }
         }
     } else {
-        // This is a file chunk (ArrayBuffer)
         receivedBuffers.push(event.data);
         receivedSize += event.data.byteLength;
-
         const progress = Math.round((receivedSize / expectedFileSize) * 100);
         herFileStatus.textContent = `Receiving file... ${progress}%`;
-
-        // CHANGED: Only render when the entire file is received
         if (receivedSize === expectedFileSize) {
             herFileStatus.textContent = 'Rendering her document...';
             const completeBuffer = new Blob(receivedBuffers);
