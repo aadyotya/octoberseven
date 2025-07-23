@@ -1,43 +1,10 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js`;
 
 // --- Configuration ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCWBjzOpEOupbR_E319T7lB1mZJ4k0WE7c",
-  authDomain: "octoberseven-9f547.firebaseapp.com",
-  databaseURL: "https://octoberseven-9f547-default-rtdb.firebaseio.com",
-  projectId: "octoberseven-9f547",
-  storageBucket: "octoberseven-9f547.appspot.com",
-  messagingSenderId: "104520694521",
-  appId: "1:104520694521:web:dd10f37aa3d2a661e70028",
-  measurementId: "G-F0FBEXHW1R"
-};
+const SERVER_URL = 'https://aadyotya-study-server.onrender.com';
+const MY_ID = `user_${Math.random().toString(36).substr(2, 9)}`;
 
-// NEW: Your personal Twilio TURN server credentials have been added.
-const iceServers = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  {
-    "urls": "stun:global.stun.twilio.com:3478"
-  },
-  {
-    "urls": "turn:global.turn.twilio.com:3478?transport=udp",
-    "username": "de19e78423c4d65582a92d8280cb3ac3a1e953bee05da39ecdb0001e64769d6b",
-    "credential": "x6vT7g8yJiox9CtsH+hHkITJfaWlGEd9D7Wt9pNiKHc="
-  },
-  {
-    "urls": "turn:global.turn.twilio.com:3478?transport=tcp",
-    "username": "de19e78423c4d65582a92d8280cb3ac3a1e953bee05da39ecdb0001e64769d6b",
-    "credential": "x6vT7g8yJiox9CtsH+hHkITJfaWlGEd9D7Wt9pNiKHc="
-  },
-  {
-    "urls": "turn:global.turn.twilio.com:443?transport=tcp",
-    "username": "de19e78423c4d65582a92d8280cb3ac3a1e953bee05da39ecdb0001e64769d6b",
-    "credential": "x6vT7g8yJiox9CtsH+hHkITJfaWlGEd9D7Wt9pNiKHc="
-  }
-];
-// Note: You will need to replace "YOUR_GENERATED_PASSWORD" with a fresh password
-// by making an API call as described previously, since the passwords are temporary.
-
-const ROOM_ID = "octoberseven";
+// --- DOM Elements ---
 const myPdfView = document.getElementById('my-pdf-view');
 const herPdfView = document.getElementById('her-pdf-view');
 const myHighlight = document.getElementById('my-highlight');
@@ -45,81 +12,84 @@ const herHighlight = document.getElementById('her-highlight');
 const connectionStatus = document.getElementById('connection-status');
 const herFileStatus = document.getElementById('her-file-status');
 
-let peerConnection, dataChannel, isPolite, localFile = null, localFileBuffer = null;
-let candidateBuffer = [], receivedBuffers = [], receivedSize = 0, expectedFileSize = 0;
+// --- Global State ---
+let myState = {
+    fileName: null,
+    y_percent: 0,
+    scroll_percent: 0
+};
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-const roomRef = database.ref(ROOM_ID);
+// --- 1. Main Application Logic ---
 
-async function connect() {
-    peerConnection = new RTCPeerConnection({ iceServers: iceServers });
-    roomRef.on('value', async (snapshot) => {
-        if (!snapshot.exists()) return;
-        const data = snapshot.val();
-        if (!isPolite && data.offer && !peerConnection.currentRemoteDescription) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer.sdp));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            await roomRef.update({ answer: { sdp: peerConnection.localDescription } });
-            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
-            candidateBuffer = [];
-        } else if (isPolite && data.answer && !peerConnection.currentRemoteDescription) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer.sdp));
-            candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
-            candidateBuffer = [];
-        }
-        if (data.candidate) {
-            const candidate = new RTCIceCandidate(data.candidate);
-            if (peerConnection.remoteDescription) await peerConnection.addIceCandidate(candidate);
-            else candidateBuffer.push(candidate);
-        }
-    });
-    peerConnection.onicecandidate = ({ candidate }) => { if (candidate) roomRef.update({ candidate: candidate.toJSON() }) };
-    peerConnection.ondatachannel = (event) => setupDataChannel(event.channel);
-    const snapshot = await roomRef.get();
-    isPolite = !snapshot.exists();
-    if (isPolite) {
-        dataChannel = peerConnection.createDataChannel('data');
-        setupDataChannel(dataChannel);
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        await roomRef.set({ offer: { sdp: peerConnection.localDescription } });
+async function sendUpdate() {
+    try {
+        await fetch(`${SERVER_URL}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: MY_ID, data: myState })
+        });
+    } catch (error) {
+        console.error("Failed to send update:", error);
     }
 }
 
-function setupDataChannel(channel) {
-    dataChannel = channel;
-    dataChannel.onopen = () => {
-        connectionStatus.textContent = "Connected! ✅";
-        connectionStatus.style.color = "#28a745";
-        if (localFileBuffer) sendFile(localFile, localFileBuffer);
-    };
-    dataChannel.onclose = () => { connectionStatus.textContent = "Disconnected"; connectionStatus.style.color = "#dc3545"; };
-    dataChannel.onmessage = handleDataChannelMessage;
+async function getStatus() {
+    try {
+        const response = await fetch(`${SERVER_URL}/status?userId=${MY_ID}`);
+        const { otherUser } = await response.json();
+
+        if (otherUser) {
+            connectionStatus.textContent = "Connected! ✅";
+            connectionStatus.style.color = "#28a745";
+            herFileStatus.textContent = otherUser.fileName ? `She is viewing: ${otherUser.fileName}` : 'She has connected.';
+            
+            const highlightTop = otherUser.y_percent * herPdfView.scrollHeight;
+            herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
+
+            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
+            if (scrollableHeight > 0) {
+                herPdfView.scrollTop = otherUser.scroll_percent * scrollableHeight;
+            }
+        } else {
+            connectionStatus.textContent = "Waiting for partner...";
+            connectionStatus.style.color = "#ff8c00";
+        }
+    } catch (error) {
+        connectionStatus.textContent = "Server offline";
+        connectionStatus.style.color = "#dc3545";
+    }
 }
 
+setInterval(getStatus, 1000);
+
+// --- 2. File Handling ---
+
+// CHANGED: This now only renders to the left "My Document" pane.
 document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || file.type !== 'application/pdf') return;
-    localFile = file;
-    localFileBuffer = await file.arrayBuffer();
-    renderPdf(new Uint8Array(localFileBuffer), myPdfView, 'local');
-    if (dataChannel && dataChannel.readyState === 'open') sendFile(localFile, localFileBuffer);
+
+    myState.fileName = file.name;
+    sendUpdate();
+    
+    const fileBuffer = await file.arrayBuffer();
+    renderPdf(new Uint8Array(fileBuffer), myPdfView);
 });
 
-function sendFile(file, fileBuffer) {
-    dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name, size: file.size }));
-    const chunkSize = 16384;
-    for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
-        dataChannel.send(fileBuffer.slice(i, i + chunkSize));
-    }
-}
+// NEW: Event listener for the second "Load Her PDF Locally" button.
+document.getElementById('her-pdf-upload-local').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || file.type !== 'application/pdf') return;
 
-async function renderPdf(pdfData, viewElement, docType) {
+    const fileBuffer = await file.arrayBuffer();
+    // Only renders this PDF in the right "Her Document" pane.
+    renderPdf(new Uint8Array(fileBuffer), herPdfView);
+});
+
+async function renderPdf(pdfData, viewElement) {
     const pdfDoc = await pdfjsLib.getDocument(pdfData).promise;
     viewElement.innerHTML = '';
-    const highlight = docType === 'local' ? myHighlight : herHighlight;
+    const highlight = viewElement.id === 'my-pdf-view' ? myHighlight : herHighlight;
     viewElement.appendChild(highlight);
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum);
@@ -132,55 +102,24 @@ async function renderPdf(pdfData, viewElement, docType) {
     }
 }
 
+// --- 3. Sending Position Data ---
 myPdfView.addEventListener('mousemove', (e) => {
     const rect = myPdfView.getBoundingClientRect();
     const y = e.clientY - rect.top + myPdfView.scrollTop;
     myHighlight.style.top = `${y - (myHighlight.clientHeight / 2)}px`;
-    if (dataChannel && dataChannel.readyState === 'open') {
-        dataChannel.send(JSON.stringify({ type: 'scroll', y_percent: y / myPdfView.scrollHeight }));
-    }
+    myState.y_percent = y / myPdfView.scrollHeight;
+    sendUpdate();
 });
 
 myPdfView.addEventListener('scroll', () => {
-    if (dataChannel && dataChannel.readyState === 'open') {
-        const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
-        if (scrollableHeight > 0) {
-            dataChannel.send(JSON.stringify({ type: 'sync_scroll', scroll_percent: myPdfView.scrollTop / scrollableHeight }));
-        }
+    const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
+    if (scrollableHeight > 0) {
+        myState.scroll_percent = myPdfView.scrollTop / scrollableHeight;
+        sendUpdate();
     }
 });
 
-function handleDataChannelMessage(event) {
-    if (typeof event.data === 'string') {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'scroll') {
-            herHighlight.style.top = `${msg.y_percent * herPdfView.scrollHeight - (herHighlight.clientHeight / 2)}px`;
-        } else if (msg.type === 'file_info') {
-            receivedBuffers = [];
-            receivedSize = 0;
-            expectedFileSize = msg.size;
-            herFileStatus.textContent = `Receiving file: ${msg.name}...`;
-            herFileStatus.style.display = 'block';
-        } else if (msg.type === 'sync_scroll') {
-            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
-            if (scrollableHeight > 0) herPdfView.scrollTop = msg.scroll_percent * scrollableHeight;
-        }
-    } else {
-        receivedBuffers.push(event.data);
-        receivedSize += event.data.byteLength;
-        herFileStatus.textContent = `Receiving file... ${Math.round((receivedSize / expectedFileSize) * 100)}%`;
-        if (receivedSize === expectedFileSize) {
-            herFileStatus.textContent = 'Rendering her document...';
-            const completeBuffer = new Blob(receivedBuffers);
-            completeBuffer.arrayBuffer().then(buffer => {
-                renderPdf(new Uint8Array(buffer), herPdfView, 'remote').then(() => {
-                    herFileStatus.style.display = 'none';
-                });
-            });
-        }
-    }
-}
-
-document.getElementById('dark-mode-btn').addEventListener('click', () => { document.body.classList.toggle('dark-mode'); });
-window.addEventListener('beforeunload', () => { if (isPolite) roomRef.remove(); });
-connect();
+// --- 4. Misc Features ---
+document.getElementById('dark-mode-btn').addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+});
