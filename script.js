@@ -1,13 +1,13 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js`;
 
 // --- Configuration ---
-// PASTE YOUR FIREBASE CONFIG OBJECT HERE
+// Your Firebase config object
 const firebaseConfig = {
   apiKey: "AIzaSyCWBjzOpEOupbR_E319T7lB1mZJ4k0WE7c",
   authDomain: "octoberseven-9f547.firebaseapp.com",
   databaseURL: "https://octoberseven-9f547-default-rtdb.firebaseio.com",
   projectId: "octoberseven-9f547",
-  storageBucket: "octoberseven-9f547.firebasestorage.app",
+  storageBucket: "octoberseven-9f547.appspot.com",
   messagingSenderId: "104520694521",
   appId: "1:104520694521:web:dd10f37aa3d2a661e70028",
   measurementId: "G-F0FBEXHW1R"
@@ -28,7 +28,10 @@ const herFileStatus = document.getElementById('her-file-status');
 let peerConnection;
 let dataChannel;
 let isPolite;
-let candidateBuffer = []; // Buffer for early ICE candidates
+let candidateBuffer = [];
+let receivedBuffers = [];      // CHANGED
+let receivedSize = 0;          // NEW
+let expectedFileSize = 0;      // NEW
 
 // Initialize Firebase
 if (!firebase.apps.length) {
@@ -43,18 +46,15 @@ async function connect() {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
 
-    // Listen for signaling messages from Firebase
     roomRef.on('value', async (snapshot) => {
         if (!snapshot.exists()) return;
         const data = snapshot.val();
 
-        // Handle offer/answer exchange
         if (!isPolite && data.offer && !peerConnection.currentRemoteDescription) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer.sdp));
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
             await roomRef.update({ answer: { sdp: peerConnection.localDescription } });
-            // Process any buffered candidates now that the remote description is set
             candidateBuffer.forEach(candidate => peerConnection.addIceCandidate(candidate));
             candidateBuffer = [];
         } else if (isPolite && data.answer && !peerConnection.currentRemoteDescription) {
@@ -63,21 +63,18 @@ async function connect() {
             candidateBuffer = [];
         }
 
-        // Handle ICE candidates
         if (data.candidate) {
             const candidate = new RTCIceCandidate(data.candidate);
             if (peerConnection.remoteDescription) {
                 await peerConnection.addIceCandidate(candidate);
             } else {
-                candidateBuffer.push(candidate); // Buffer the candidate if remote description is not set
+                candidateBuffer.push(candidate);
             }
         }
     });
 
     peerConnection.onicecandidate = ({ candidate }) => {
-        if (candidate) {
-            roomRef.update({ candidate: candidate.toJSON() });
-        }
+        if (candidate) roomRef.update({ candidate: candidate.toJSON() });
     };
 
     peerConnection.ondatachannel = (event) => setupDataChannel(event.channel);
@@ -114,8 +111,8 @@ document.getElementById('my-pdf-upload').addEventListener('change', async (e) =>
     const fileBuffer = await file.arrayBuffer();
     renderPdf(new Uint8Array(fileBuffer), myPdfView, 'local');
     if (dataChannel && dataChannel.readyState === 'open') {
-        dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name }));
-        // Chunk and send the file to avoid size limits
+        // CHANGED: Also send the file size for reliable transfer
+        dataChannel.send(JSON.stringify({ type: 'file_info', name: file.name, size: file.size }));
         const chunkSize = 16384;
         for (let i = 0; i < fileBuffer.byteLength; i += chunkSize) {
             dataChannel.send(fileBuffer.slice(i, i + chunkSize));
@@ -123,7 +120,6 @@ document.getElementById('my-pdf-upload').addEventListener('change', async (e) =>
     }
 });
 
-let receivedBuffers = [];
 async function renderPdf(pdfData, viewElement, docType) {
     const pdfDoc = await pdfjsLib.getDocument(pdfData).promise;
     viewElement.innerHTML = '';
@@ -159,23 +155,31 @@ function handleDataChannelMessage(event) {
             const highlightTop = msg.y_percent * herPdfView.scrollHeight;
             herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
         } else if (msg.type === 'file_info') {
-            receivedBuffers = []; // Start new file transfer
+            // CHANGED: Prepare for new file transfer
+            receivedBuffers = [];
+            receivedSize = 0;
+            expectedFileSize = msg.size;
             herFileStatus.textContent = `Receiving file: ${msg.name}...`;
+            herFileStatus.style.display = 'block';
         }
     } else {
-        // It's a file chunk (ArrayBuffer)
+        // This is a file chunk (ArrayBuffer)
         receivedBuffers.push(event.data);
-        const totalSize = receivedBuffers.reduce((acc, val) => acc + val.byteLength, 0);
-        
-        // This is a simple check; a more robust solution would send file size first
-        // For now, we assume the transfer is done when we get a message after the chunks
-        herFileStatus.textContent = `Rendering her document...`;
-        const completeBuffer = new Blob(receivedBuffers);
-        completeBuffer.arrayBuffer().then(buffer => {
-            renderPdf(new Uint8Array(buffer), herPdfView, 'remote').then(() => {
-                herFileStatus.style.display = 'none';
+        receivedSize += event.data.byteLength;
+
+        const progress = Math.round((receivedSize / expectedFileSize) * 100);
+        herFileStatus.textContent = `Receiving file... ${progress}%`;
+
+        // CHANGED: Only render when the entire file is received
+        if (receivedSize === expectedFileSize) {
+            herFileStatus.textContent = 'Rendering her document...';
+            const completeBuffer = new Blob(receivedBuffers);
+            completeBuffer.arrayBuffer().then(buffer => {
+                renderPdf(new Uint8Array(buffer), herPdfView, 'remote').then(() => {
+                    herFileStatus.style.display = 'none';
+                });
             });
-        });
+        }
     }
 }
 
