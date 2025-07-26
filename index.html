@@ -1,133 +1,68 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A private space to study together.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍊</text></svg>">
+    <title>i'm w you reading</title>
 
-    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <meta name="description" content="A private space to study together.">
-
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍊</text></svg>">
-
-    <title>i'm w you reading</title>
-
-    
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
-
-    
-
-    <link rel="stylesheet" href="style.css">
-
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
+    <main class="main-container">
+        <section class="view-pane" id="my-pane">
+            <div class="emoji-float-container" id="my-emoji-container"></div>
+            <header class="pane-header">
+                <h2>My Document</h2>
+                <div class="controls">
+                    <label for="my-pdf-upload" class="file-upload-label">Upload Your PDF</label>
+                    <input type="file" id="my-pdf-upload" class="file-upload-input">
+                    <button id="dark-mode-btn" title="Toggle Dark Mode">🌙</button>
+                    <div class="emoji-container">
+                        <button class="emoji-btn">🍊</button>
+                        <div class="emoji-picker">
+                            <span class="emoji-option">❤️</span>
+                            <span class="emoji-option">🍊</span>
+                            <span class="emoji-option">😠</span>
+                            <span class="emoji-option">😥</span>
+                            <span class="emoji-option">😘</span>
+                            <span class="emoji-option">😴</span>
+                            <span class="emoji-option">📞</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <div id="my-pdf-view" class="pdf-view">
+                <div id="my-highlight" class="highlight self"></div>
+            </div>
+        </section>
 
+        <section class="view-pane" id="her-pane">
+            <div class="emoji-float-container" id="her-emoji-container"></div>
+            <header class="pane-header">
+                <h2>Her Document (<span id="connection-status">Connecting...</span>)</h2>
+                <p id="her-file-status">Waiting for her to upload a file...</p>
 
-    <main class="main-container">
+                <label for="her-pdf-upload-local" class="file-upload-label secondary">Load Her PDF Locally</label>
+                <input type="file" id="her-pdf-upload-local" class="file-upload-input">
 
-        <section class="view-pane" id="my-pane">
+            </header>
+            <div id="her-pdf-view" class="pdf-view">
+                <div id="her-highlight" class="highlight partner"></div>
+            </div>
+        </section>
+    </main>
 
-            <div class="emoji-float-container" id="my-emoji-container"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
 
-            <header class="pane-header">
-
-                <h2>My Document</h2>
-
-                <div class="controls">
-
-                    <label for="my-pdf-upload" class="file-upload-label">Upload Your PDF</label>
-
-                    <input type="file" id="my-pdf-upload" class="file-upload-input">
-
-                    <button id="dark-mode-btn" title="Toggle Dark Mode">🌙</button>
-
-                    <div class="emoji-container">
-
-                        <button class="emoji-btn">🍊</button>
-
-                        <div class="emoji-picker">
-
-                            <span class="emoji-option">❤️</span>
-
-                            <span class="emoji-option">🍊</span>
-
-                            <span class="emoji-option">😠</span>
-
-                            <span class="emoji-option">😥</span>
-
-                            <span class="emoji-option">😘</span>
-
-                            <span class="emoji-option">😴</span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </header>
-
-            <div id="my-pdf-view" class="pdf-view">
-
-                <div id="my-highlight" class="highlight self"></div>
-
-            </div>
-
-        </section>
-
-
-
-        <section class="view-pane" id="her-pane">
-
-            <div class="emoji-float-container" id="her-emoji-container"></div>
-
-            <header class="pane-header">
-
-                <h2>Her Document (<span id="connection-status">Connecting...</span>)</h2>
-
-                <p id="her-file-status">Waiting for her to upload a file...</p>
-
-                
-
-                <label for="her-pdf-upload-local" class="file-upload-label secondary">Load Her PDF Locally</label>
-
-                <input type="file" id="her-pdf-upload-local" class="file-upload-input">
-
-                
-
-            </header>
-
-            <div id="her-pdf-view" class="pdf-view">
-
-                <div id="her-highlight" class="highlight partner"></div>
-
-            </div>
-
-        </section>
-
-    </main>
-
-    
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
-
-    
-
-    <script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
-
 </html>
