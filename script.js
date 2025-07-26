@@ -11,21 +11,25 @@ const myHighlight = document.getElementById('my-highlight');
 const herHighlight = document.getElementById('her-highlight');
 const connectionStatus = document.getElementById('connection-status');
 const herFileStatus = document.getElementById('her-file-status');
-// NEW: Emoji elements
 const emojiBtn = document.querySelector('.emoji-btn');
 const emojiPicker = document.querySelector('.emoji-picker');
 const emojiOptions = document.querySelectorAll('.emoji-option');
 const myEmojiContainer = document.getElementById('my-emoji-container');
 const herEmojiContainer = document.getElementById('her-emoji-container');
+// NEW: Chat elements
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
 
 // --- Global State ---
 let myState = {
     fileName: null,
     y_percent: 0,
     scroll_percent: 0,
-    emoji: null // NEW: To hold the latest emoji event
+    emoji: null
 };
-let lastHerEmojiId = null; // NEW: To prevent re-showing the same emoji
+let lastHerEmojiId = null;
+let lastMessageCount = 0; // NEW: To track chat history
 
 // --- 1. Main Application Logic ---
 async function sendUpdate() {
@@ -58,7 +62,6 @@ async function getStatus() {
                 herPdfView.scrollTop = otherUser.scroll_percent * scrollableHeight;
             }
 
-            // NEW: Check for and display new emojis from the other user
             if (otherUser.emoji && otherUser.emoji.id !== lastHerEmojiId) {
                 triggerEmojiRain(otherUser.emoji.char, herEmojiContainer);
                 lastHerEmojiId = otherUser.emoji.id;
@@ -73,16 +76,45 @@ async function getStatus() {
     }
 }
 
-setInterval(getStatus, 1000);
+// NEW: Function to get and display chat messages
+async function getChatHistory() {
+    try {
+        const response = await fetch(`${SERVER_URL}/chat`);
+        const messages = await response.json();
+
+        if (messages.length > lastMessageCount) {
+            chatMessages.innerHTML = '';
+            messages.forEach(msg => {
+                const msgEl = document.createElement('div');
+                msgEl.classList.add('chat-message');
+                msgEl.textContent = msg.text;
+                if (msg.senderId === MY_ID) {
+                    msgEl.classList.add('my-message');
+                } else {
+                    msgEl.classList.add('her-message');
+                }
+                chatMessages.appendChild(msgEl);
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            lastMessageCount = messages.length;
+        }
+    } catch (error) {
+        console.error("Failed to get chat history:", error);
+    }
+}
+
+// Start polling the server for all updates
+setInterval(() => {
+    getStatus();
+    getChatHistory(); // NEW: Also check for new chat messages
+}, 1000);
 
 // --- 2. File Handling ---
 document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || file.type !== 'application/pdf') return;
-
     myState.fileName = file.name;
     sendUpdate();
-    
     const fileBuffer = await file.arrayBuffer();
     renderPdf(new Uint8Array(fileBuffer), myPdfView);
 });
@@ -90,7 +122,6 @@ document.getElementById('my-pdf-upload').addEventListener('change', async (e) =>
 document.getElementById('her-pdf-upload-local').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || file.type !== 'application/pdf') return;
-
     const fileBuffer = await file.arrayBuffer();
     renderPdf(new Uint8Array(fileBuffer), herPdfView);
 });
@@ -128,7 +159,7 @@ myPdfView.addEventListener('scroll', () => {
     }
 });
 
-// NEW: --- 4. Emoji Feature Logic ---
+// --- 4. Emoji Feature Logic ---
 emojiBtn.addEventListener('click', () => {
     emojiPicker.classList.toggle('show');
 });
@@ -137,7 +168,7 @@ emojiOptions.forEach(option => {
     option.addEventListener('click', () => {
         const emoji = option.textContent;
         triggerEmojiRain(emoji, myEmojiContainer);
-        myState.emoji = { char: emoji, id: Date.now() }; // Use timestamp as a unique ID
+        myState.emoji = { char: emoji, id: Date.now() };
         sendUpdate();
         emojiPicker.classList.remove('show');
     });
@@ -149,7 +180,6 @@ function triggerEmojiRain(emoji, container) {
         const emojiEl = document.createElement('div');
         emojiEl.classList.add('raining-emoji');
         emojiEl.textContent = emoji;
-
         emojiEl.style.left = `${Math.random() * 100}%`;
         emojiEl.style.fontSize = `${Math.random() * 1.5 + 1}rem`;
         const duration = Math.random() * 2 + 3;
@@ -158,16 +188,33 @@ function triggerEmojiRain(emoji, container) {
         emojiEl.style.animationDuration = `${duration}s`;
         emojiEl.style.animationDelay = `${delay}s`;
         emojiEl.style.animationTimingFunction = 'linear';
-
         container.appendChild(emojiEl);
-
         setTimeout(() => {
             emojiEl.remove();
         }, (duration + delay) * 1000);
     }
 }
 
-// --- 5. Misc Features ---
+// --- 5. NEW: Chat Logic ---
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (text) {
+        const message = {
+            senderId: MY_ID,
+            text: text
+        };
+        await fetch(`${SERVER_URL}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(message)
+        });
+        chatInput.value = '';
+        getChatHistory();
+    }
+});
+
+// --- 6. Misc Features ---
 document.getElementById('dark-mode-btn').addEventListener('click', () => {
     document.body.classList.toggle('dark-mode');
 });
