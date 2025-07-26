@@ -125,15 +125,6 @@ canvas {
     box-shadow: 0 4px 8px rgba(255, 122, 89, 0.4);
 }
 
-.file-upload-label.secondary {
-    background-color: #555;
-    box-shadow: 0 2px 5px rgba(129, 129, 129, 0.4);
-}
-.file-upload-label.secondary:hover {
-    background-color: #6a6a6a;
-    box-shadow: 0 4px 8px rgba(129, 129, 129, 0.4);
-}
-
 #dark-mode-btn, .emoji-btn {
     padding: 10px 14px;
 }
