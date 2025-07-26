@@ -22,6 +22,11 @@ body {
     padding: 0;
     overflow: hidden;
     transition: background-color 0.3s, color 0.3s;
+
+    background-image: linear-gradient(rgba(253, 252, 255, 0.75), rgba(253, 252, 255, 0.75)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
 }
 
 /* --- Layout --- */
