@@ -102,7 +102,7 @@ async function renderPdf(pdfData, viewElement) {
     viewElement.appendChild(highlight);
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 1.3 });
+        const viewport = page.getViewport({ scale: 1.4 });
         const canvas = document.createElement('canvas');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
