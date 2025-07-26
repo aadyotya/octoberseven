@@ -135,11 +135,17 @@ canvas {
 .emoji-picker.show { display: flex; gap: 10px; }
 .emoji-option { font-size: 1.5rem; cursor: pointer; transition: transform 0.2s; }
 .emoji-option:hover { transform: scale(1.2); }
-.emoji-float-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
-.floating-emoji { position: absolute; left: 50%; top: 50%; font-size: 4rem; animation: floatUp 3s ease-out forwards; }
-@keyframes floatUp {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(-200px) scale(1.5); opacity: 0; }
+.emoji-float-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; z-index: 100; }
+
+/* NEW/CHANGED: Replaced the old floatUp animation with the new rainFall animation */
+.raining-emoji {
+    position: absolute;
+    top: -50px; /* Start above the screen */
+    /* Animation properties are set by JavaScript for randomization */
+}
+@keyframes rainFall {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(110vh); opacity: 0; } /* Fall past the bottom of the screen */
 }
 
 /* --- Highlights --- */
@@ -160,7 +166,7 @@ body.dark-mode #my-pane {
 }
 body.dark-mode .pdf-view {
     border-color: var(--border-dark);
-    background-color: rgba(45, 43, 55, 0.65); /* CHANGED: Made more transparent */
+    background-color: rgba(45, 43, 55, 0.65); 
     box-shadow: none;
 }
 body.dark-mode canvas {
@@ -171,7 +177,6 @@ body.dark-mode .emoji-picker {
     background-color: var(--pane-bg-dark);
 }
 body.dark-mode .main-container {
-    /* CHANGED: Made the overlay less intense to let the background show through */
     background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
 }
 
