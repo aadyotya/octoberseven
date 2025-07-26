@@ -11,16 +11,23 @@ const myHighlight = document.getElementById('my-highlight');
 const herHighlight = document.getElementById('her-highlight');
 const connectionStatus = document.getElementById('connection-status');
 const herFileStatus = document.getElementById('her-file-status');
+// NEW: Emoji elements
+const emojiBtn = document.querySelector('.emoji-btn');
+const emojiPicker = document.querySelector('.emoji-picker');
+const emojiOptions = document.querySelectorAll('.emoji-option');
+const myEmojiContainer = document.getElementById('my-emoji-container');
+const herEmojiContainer = document.getElementById('her-emoji-container');
 
 // --- Global State ---
 let myState = {
     fileName: null,
     y_percent: 0,
-    scroll_percent: 0
+    scroll_percent: 0,
+    emoji: null // NEW: To hold the latest emoji event
 };
+let lastHerEmojiId = null; // NEW: To prevent re-showing the same emoji
 
 // --- 1. Main Application Logic ---
-
 async function sendUpdate() {
     try {
         await fetch(`${SERVER_URL}/update`, {
@@ -50,6 +57,12 @@ async function getStatus() {
             if (scrollableHeight > 0) {
                 herPdfView.scrollTop = otherUser.scroll_percent * scrollableHeight;
             }
+
+            // NEW: Check for and display new emojis from the other user
+            if (otherUser.emoji && otherUser.emoji.id !== lastHerEmojiId) {
+                triggerEmojiRain(otherUser.emoji.char, herEmojiContainer);
+                lastHerEmojiId = otherUser.emoji.id;
+            }
         } else {
             connectionStatus.textContent = "Waiting for partner...";
             connectionStatus.style.color = "#ff8c00";
@@ -63,8 +76,6 @@ async function getStatus() {
 setInterval(getStatus, 1000);
 
 // --- 2. File Handling ---
-
-// CHANGED: This now only renders to the left "My Document" pane.
 document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || file.type !== 'application/pdf') return;
@@ -76,13 +87,11 @@ document.getElementById('my-pdf-upload').addEventListener('change', async (e) =>
     renderPdf(new Uint8Array(fileBuffer), myPdfView);
 });
 
-// NEW: Event listener for the second "Load Her PDF Locally" button.
 document.getElementById('her-pdf-upload-local').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file || file.type !== 'application/pdf') return;
 
     const fileBuffer = await file.arrayBuffer();
-    // Only renders this PDF in the right "Her Document" pane.
     renderPdf(new Uint8Array(fileBuffer), herPdfView);
 });
 
@@ -119,7 +128,46 @@ myPdfView.addEventListener('scroll', () => {
     }
 });
 
-// --- 4. Misc Features ---
+// NEW: --- 4. Emoji Feature Logic ---
+emojiBtn.addEventListener('click', () => {
+    emojiPicker.classList.toggle('show');
+});
+
+emojiOptions.forEach(option => {
+    option.addEventListener('click', () => {
+        const emoji = option.textContent;
+        triggerEmojiRain(emoji, myEmojiContainer);
+        myState.emoji = { char: emoji, id: Date.now() }; // Use timestamp as a unique ID
+        sendUpdate();
+        emojiPicker.classList.remove('show');
+    });
+});
+
+function triggerEmojiRain(emoji, container) {
+    const rainCount = 20;
+    for (let i = 0; i < rainCount; i++) {
+        const emojiEl = document.createElement('div');
+        emojiEl.classList.add('raining-emoji');
+        emojiEl.textContent = emoji;
+
+        emojiEl.style.left = `${Math.random() * 100}%`;
+        emojiEl.style.fontSize = `${Math.random() * 1.5 + 1}rem`;
+        const duration = Math.random() * 2 + 3;
+        const delay = Math.random() * 2;
+        emojiEl.style.animationName = 'rainFall';
+        emojiEl.style.animationDuration = `${duration}s`;
+        emojiEl.style.animationDelay = `${delay}s`;
+        emojiEl.style.animationTimingFunction = 'linear';
+
+        container.appendChild(emojiEl);
+
+        setTimeout(() => {
+            emojiEl.remove();
+        }, (duration + delay) * 1000);
+    }
+}
+
+// --- 5. Misc Features ---
 document.getElementById('dark-mode-btn').addEventListener('click', () => {
     document.body.classList.toggle('dark-mode');
 });
