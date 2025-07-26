@@ -129,6 +129,89 @@ canvas {
     padding: 10px 14px;
 }
 
+/* NEW: Rule for permanent grey buttons */
+#dark-mode-btn, .emoji-btn {
+    background-color: #d1d1d1;
+    color: #333;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+#dark-mode-btn:hover, .emoji-btn:hover {
+    background-color: #bfbfbf;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+
+/* --- Chat Box Styles --- */
+.chat-container {
+    height: 200px;
+    margin-top: 1rem;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    flex-shrink: 0;
+}
+.chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.chat-message {
+    padding: 8px 12px;
+    border-radius: 18px;
+    max-width: 70%;
+    width: fit-content;
+    font-size: 0.9rem;
+}
+.my-message {
+    background-color: var(--accent-color);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+.her-message {
+    background-color: #e5e5ea;
+    color: var(--text-light);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+.chat-form {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid var(--border-light);
+    flex-shrink: 0;
+}
+#chat-input {
+    flex-grow: 1;
+    border: none;
+    background: transparent;
+    padding: 8px;
+    font-family: var(--body-font);
+    font-size: 0.9rem;
+    outline: none;
+    color: var(--text-light);
+}
+.chat-form button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+.chat-form button:hover {
+    background-color: var(--accent-hover);
+}
+
 /* --- Emoji Feature Styles --- */
 .emoji-container { position: relative; }
 .emoji-picker { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background-color: var(--pane-bg-light); border: 1px solid var(--border-light); border-radius: 10px; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 10; }
@@ -136,16 +219,13 @@ canvas {
 .emoji-option { font-size: 1.5rem; cursor: pointer; transition: transform 0.2s; }
 .emoji-option:hover { transform: scale(1.2); }
 .emoji-float-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; z-index: 100; }
-
-/* NEW/CHANGED: Replaced the old floatUp animation with the new rainFall animation */
 .raining-emoji {
     position: absolute;
-    top: -50px; /* Start above the screen */
-    /* Animation properties are set by JavaScript for randomization */
+    top: -50px;
 }
 @keyframes rainFall {
   0% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(110vh); opacity: 0; } /* Fall past the bottom of the screen */
+  100% { transform: translateY(110vh); opacity: 0; }
 }
 
 /* --- Highlights --- */
@@ -178,6 +258,20 @@ body.dark-mode .emoji-picker {
 }
 body.dark-mode .main-container {
     background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
+}
+body.dark-mode .chat-container {
+    background-color: rgba(45, 43, 55, 0.85);
+    border-color: var(--border-dark);
+}
+body.dark-mode .her-message {
+    background-color: #3e3e42;
+    color: var(--text-dark);
+}
+body.dark-mode #chat-input {
+    color: var(--text-dark);
+}
+body.dark-mode .chat-form {
+    border-top-color: var(--border-dark);
 }
 
 /* --- Mobile Responsiveness --- */
