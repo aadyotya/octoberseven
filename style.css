@@ -3,7 +3,7 @@
     --background-light: #fdfcff;
     --background-dark: #23222a;
     --text-light: #3D405B;
-    --text-dark: #f5f5f5; /* CHANGED: Made text brighter */
+    --text-dark: #f5f5f5;
     --pane-bg-light: #ffffff;
     --pane-bg-dark: #2d2b37;
     --border-light: #e1e1e8;
@@ -153,24 +153,26 @@ body.dark-mode {
     color: var(--text-dark);
 }
 body.dark-mode .view-pane {
-    background-color: rgba(45, 43, 55, 0.9); /* CHANGED: Made slightly more opaque */
+    background-color: transparent; /* This should be transparent to see the main background */
 }
 body.dark-mode #my-pane {
     border-right-color: var(--border-dark);
 }
 body.dark-mode .pdf-view {
     border-color: var(--border-dark);
-    background-color: var(--pane-bg-dark); /* CHANGED: Made solid for better contrast */
+    /* CHANGED: This is now semi-transparent so the background image shows through */
+    background-color: rgba(45, 43, 55, 0.85); 
     box-shadow: none;
 }
 body.dark-mode canvas {
-    filter: invert(1) hue-rotate(180deg); /* CHANGED: Full invert for crisp text */
+    filter: invert(1) hue-rotate(180deg);
 }
 body.dark-mode .emoji-picker {
     border-color: var(--border-dark);
+    background-color: var(--pane-bg-dark);
 }
 body.dark-mode .main-container {
-    background-image: linear-gradient(rgba(35, 34, 42, 0.9), rgba(35, 34, 42, 0.9)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg'); /* CHANGED: Darker overlay */
+    background-image: linear-gradient(rgba(35, 34, 42, 0.9), rgba(35, 34, 42, 0.9)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
 }
 
 /* --- Mobile Responsiveness --- */
