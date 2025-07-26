@@ -119,7 +119,7 @@ canvas {
     box-shadow: 0 2px 5px rgba(255, 122, 89, 0.4);
 }
 
-.file-upload-label:hover, #dark-mode-btn:hover, .emoji-btn:hover {
+.file-upload-label:hover {
     background-color: var(--accent-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(255, 122, 89, 0.4);
@@ -129,7 +129,6 @@ canvas {
     padding: 10px 14px;
 }
 
-/* NEW: Rule for permanent grey buttons */
 #dark-mode-btn, .emoji-btn {
     background-color: #d1d1d1;
     color: #333;
@@ -140,76 +139,6 @@ canvas {
     background-color: #bfbfbf;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-
-/* --- Chat Box Styles --- */
-.chat-container {
-    height: 200px;
-    margin-top: 1rem;
-    border: 1px solid var(--border-light);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    background-color: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    flex-shrink: 0;
-}
-.chat-messages {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.chat-message {
-    padding: 8px 12px;
-    border-radius: 18px;
-    max-width: 70%;
-    width: fit-content;
-    font-size: 0.9rem;
-}
-.my-message {
-    background-color: var(--accent-color);
-    color: white;
-    align-self: flex-end;
-    border-bottom-right-radius: 4px;
-}
-.her-message {
-    background-color: #e5e5ea;
-    color: var(--text-light);
-    align-self: flex-start;
-    border-bottom-left-radius: 4px;
-}
-.chat-form {
-    display: flex;
-    padding: 10px;
-    border-top: 1px solid var(--border-light);
-    flex-shrink: 0;
-}
-#chat-input {
-    flex-grow: 1;
-    border: none;
-    background: transparent;
-    padding: 8px;
-    font-family: var(--body-font);
-    font-size: 0.9rem;
-    outline: none;
-    color: var(--text-light);
-}
-.chat-form button {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s;
-}
-.chat-form button:hover {
-    background-color: var(--accent-hover);
 }
 
 /* --- Emoji Feature Styles --- */
@@ -257,21 +186,7 @@ body.dark-mode .emoji-picker {
     background-color: var(--pane-bg-dark);
 }
 body.dark-mode .main-container {
-    background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
-}
-body.dark-mode .chat-container {
-    background-color: rgba(45, 43, 55, 0.85);
-    border-color: var(--border-dark);
-}
-body.dark-mode .her-message {
-    background-color: #3e3e42;
-    color: var(--text-dark);
-}
-body.dark-mode #chat-input {
-    color: var(--text-dark);
-}
-body.dark-mode .chat-form {
-    border-top-color: var(--border-dark);
+    background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
 }
 
 /* --- Mobile Responsiveness --- */
