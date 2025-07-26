@@ -1,67 +1,125 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A private space to study together.">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍊</text></svg>">
-    <title>i'm w you reading</title>
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js`;
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
+// --- Configuration ---
+const SERVER_URL = 'https://aadyotya-study-server.onrender.com';
+const MY_ID = `user_${Math.random().toString(36).substr(2, 9)}`;
 
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+// --- DOM Elements ---
+const myPdfView = document.getElementById('my-pdf-view');
+const herPdfView = document.getElementById('her-pdf-view');
+const myHighlight = document.getElementById('my-highlight');
+const herHighlight = document.getElementById('her-highlight');
+const connectionStatus = document.getElementById('connection-status');
+const herFileStatus = document.getElementById('her-file-status');
 
-    <main class="main-container">
-        <section class="view-pane" id="my-pane">
-            <div class="emoji-float-container" id="my-emoji-container"></div>
-            <header class="pane-header">
-                <h2>My Document</h2>
-                <div class="controls">
-                    <label for="my-pdf-upload" class="file-upload-label">Upload Your PDF</label>
-                    <input type="file" id="my-pdf-upload" class="file-upload-input">
-                    <button id="dark-mode-btn" title="Toggle Dark Mode">🌙</button>
-                    <div class="emoji-container">
-                        <button class="emoji-btn">🍊</button>
-                        <div class="emoji-picker">
-                            <span class="emoji-option">❤️</span>
-                            <span class="emoji-option">🍊</span>
-                            <span class="emoji-option">😠</span>
-                            <span class="emoji-option">😥</span>
-                            <span class="emoji-option">😘</span>
-                            <span class="emoji-option">😴</span>
-                        </div>
-                    </div>
-                </div>
-            </header>
-            <div id="my-pdf-view" class="pdf-view">
-                <div id="my-highlight" class="highlight self"></div>
-            </div>
-        </section>
+// --- Global State ---
+let myState = {
+    fileName: null,
+    y_percent: 0,
+    scroll_percent: 0
+};
 
-        <section class="view-pane" id="her-pane">
-            <div class="emoji-float-container" id="her-emoji-container"></div>
-            <header class="pane-header">
-                <h2>Her Document (<span id="connection-status">Connecting...</span>)</h2>
-                <p id="her-file-status">Waiting for her to upload a file...</p>
+// --- 1. Main Application Logic ---
 
-                <label for="her-pdf-upload-local" class="file-upload-label secondary">Load Her PDF Locally</label>
-                <input type="file" id="her-pdf-upload-local" class="file-upload-input">
+async function sendUpdate() {
+    try {
+        await fetch(`${SERVER_URL}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: MY_ID, data: myState })
+        });
+    } catch (error) {
+        console.error("Failed to send update:", error);
+    }
+}
 
-            </header>
-            <div id="her-pdf-view" class="pdf-view">
-                <div id="her-highlight" class="highlight partner"></div>
-            </div>
-        </section>
-    </main>
+async function getStatus() {
+    try {
+        const response = await fetch(`${SERVER_URL}/status?userId=${MY_ID}`);
+        const { otherUser } = await response.json();
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+        if (otherUser) {
+            connectionStatus.textContent = "Connected! ✅";
+            connectionStatus.style.color = "#28a745";
+            herFileStatus.textContent = otherUser.fileName ? `She is viewing: ${otherUser.fileName}` : 'She has connected.';
+            
+            const highlightTop = otherUser.y_percent * herPdfView.scrollHeight;
+            herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
 
-    <script src="script.js"></script>
-</body>
-</html>
+            const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
+            if (scrollableHeight > 0) {
+                herPdfView.scrollTop = otherUser.scroll_percent * scrollableHeight;
+            }
+        } else {
+            connectionStatus.textContent = "Waiting for partner...";
+            connectionStatus.style.color = "#ff8c00";
+        }
+    } catch (error) {
+        connectionStatus.textContent = "Server offline";
+        connectionStatus.style.color = "#dc3545";
+    }
+}
+
+setInterval(getStatus, 1000);
+
+// --- 2. File Handling ---
+
+// CHANGED: This now only renders to the left "My Document" pane.
+document.getElementById('my-pdf-upload').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || file.type !== 'application/pdf') return;
+
+    myState.fileName = file.name;
+    sendUpdate();
+    
+    const fileBuffer = await file.arrayBuffer();
+    renderPdf(new Uint8Array(fileBuffer), myPdfView);
+});
+
+// NEW: Event listener for the second "Load Her PDF Locally" button.
+document.getElementById('her-pdf-upload-local').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || file.type !== 'application/pdf') return;
+
+    const fileBuffer = await file.arrayBuffer();
+    // Only renders this PDF in the right "Her Document" pane.
+    renderPdf(new Uint8Array(fileBuffer), herPdfView);
+});
+
+async function renderPdf(pdfData, viewElement) {
+    const pdfDoc = await pdfjsLib.getDocument(pdfData).promise;
+    viewElement.innerHTML = '';
+    const highlight = viewElement.id === 'my-pdf-view' ? myHighlight : herHighlight;
+    viewElement.appendChild(highlight);
+    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 0.67 });
+        const canvas = document.createElement('canvas');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        viewElement.appendChild(canvas);
+        page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport });
+    }
+}
+
+// --- 3. Sending Position Data ---
+myPdfView.addEventListener('mousemove', (e) => {
+    const rect = myPdfView.getBoundingClientRect();
+    const y = e.clientY - rect.top + myPdfView.scrollTop;
+    myHighlight.style.top = `${y - (myHighlight.clientHeight / 2)}px`;
+    myState.y_percent = y / myPdfView.scrollHeight;
+    sendUpdate();
+});
+
+myPdfView.addEventListener('scroll', () => {
+    const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
+    if (scrollableHeight > 0) {
+        myState.scroll_percent = myPdfView.scrollTop / scrollableHeight;
+        sendUpdate();
+    }
+});
+
+// --- 4. Misc Features ---
+document.getElementById('dark-mode-btn').addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+});
