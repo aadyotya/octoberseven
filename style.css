@@ -129,6 +129,7 @@ canvas {
     padding: 10px 14px;
 }
 
+/* NEW: Rule for permanent grey buttons */
 #dark-mode-btn, .emoji-btn {
     background-color: #d1d1d1;
     color: #333;
@@ -186,7 +187,7 @@ body.dark-mode .emoji-picker {
     background-color: var(--pane-bg-dark);
 }
 body.dark-mode .main-container {
-    background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
+    background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
 }
 
 /* --- Mobile Responsiveness --- */
