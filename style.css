@@ -2,14 +2,14 @@
 :root {
     --background-light: #fdfcff;
     --background-dark: #23222a;
-    --text-light: #3D405B; /* CHANGED to a dark slate for better contrast */
-    --text-dark: #e8e7f3;
+    --text-light: #3D405B;
+    --text-dark: #f5f5f5; /* CHANGED: Made text brighter */
     --pane-bg-light: #ffffff;
     --pane-bg-dark: #2d2b37;
     --border-light: #e1e1e8;
     --border-dark: #413e52;
-    --accent-color: #FF7A59; /* CHANGED to Orange */
-    --accent-hover: #E66A4F; /* CHANGED to a darker orange */
+    --accent-color: #FF7A59;
+    --accent-hover: #E66A4F;
     --header-font: 'Pacifico', cursive;
     --body-font: 'Poppins', sans-serif;
 }
@@ -29,7 +29,7 @@ body {
     display: flex;
     width: 100vw;
     height: 100vh;
-    background-image: linear-gradient(rgba(253, 252, 255, 0.8), rgba(253, 252, 255, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
+    background-image: linear-gradient(rgba(253, 252, 255, 0.75), rgba(253, 252, 255, 0.75)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -43,7 +43,7 @@ body {
     flex-direction: column;
     padding: 1.5rem;
     box-sizing: border-box;
-    background-color: transparent; /* Updated for background image */
+    background-color: transparent;
     transition: background-color 0.3s;
 }
 
@@ -83,7 +83,7 @@ h2 {
     overflow: auto;
     flex-grow: 1;
     transition: border-color 0.3s;
-    background-color: rgba(255, 255, 255, 0.7); /* A little white tint for readability */
+    background-color: rgba(255, 255, 255, 0.7);
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
@@ -108,7 +108,7 @@ canvas {
 
 .file-upload-label, #dark-mode-btn, .emoji-btn {
     background-color: var(--accent-color);
-    color: white; /* Text is now white */
+    color: white;
     padding: 10px 20px;
     border-radius: 20px;
     cursor: pointer;
@@ -116,13 +116,13 @@ canvas {
     transition: all 0.2s ease-in-out;
     border: none;
     font-size: 0.9rem;
-    box-shadow: 0 2px 5px rgba(255, 122, 89, 0.4); /* CHANGED to orange glow */
+    box-shadow: 0 2px 5px rgba(255, 122, 89, 0.4);
 }
 
 .file-upload-label:hover, #dark-mode-btn:hover, .emoji-btn:hover {
     background-color: var(--accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(255, 122, 89, 0.4); /* CHANGED to orange glow */
+    box-shadow: 0 4px 8px rgba(255, 122, 89, 0.4);
 }
 
 .file-upload-label.secondary {
@@ -153,17 +153,34 @@ canvas {
 
 /* --- Highlights --- */
 .highlight { position: absolute; width: 100%; height: 80px; pointer-events: none; transition: top 0.2s ease-out; box-sizing: border-box; }
-.self { background-image: linear-gradient(to right, rgba(68, 142, 228, 0.3), rgba(68, 142, 228, 0)); } /* A soft blue */
-.partner { background-image: linear-gradient(to right, rgba(255, 122, 89, 0.3), rgba(255, 122, 89, 0)); } /* A soft orange */
+.self { background-image: linear-gradient(to right, rgba(68, 142, 228, 0.3), rgba(68, 142, 228, 0)); }
+.partner { background-image: linear-gradient(to right, rgba(255, 122, 89, 0.3), rgba(255, 122, 89, 0)); }
 
 /* --- Dark Mode --- */
-body.dark-mode { background-color: var(--background-dark); color: var(--text-dark); }
-body.dark-mode .view-pane { background-color: rgba(45, 43, 55, 0.85); }
-body.dark-mode #my-pane { border-right-color: var(--border-dark); }
-body.dark-mode .pdf-view { border-color: var(--border-dark); background-color: rgba(30, 30, 30, 0.8); box-shadow: none; }
-body.dark-mode canvas { filter: invert(0.9) hue-rotate(180deg); }
-body.dark-mode .emoji-picker { border-color: var(--border-dark); }
-body.dark-mode .main-container { background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');}
+body.dark-mode {
+    background-color: var(--background-dark);
+    color: var(--text-dark);
+}
+body.dark-mode .view-pane {
+    background-color: rgba(45, 43, 55, 0.9); /* CHANGED: Made slightly more opaque */
+}
+body.dark-mode #my-pane {
+    border-right-color: var(--border-dark);
+}
+body.dark-mode .pdf-view {
+    border-color: var(--border-dark);
+    background-color: var(--pane-bg-dark); /* CHANGED: Made solid for better contrast */
+    box-shadow: none;
+}
+body.dark-mode canvas {
+    filter: invert(1) hue-rotate(180deg); /* CHANGED: Full invert for crisp text */
+}
+body.dark-mode .emoji-picker {
+    border-color: var(--border-dark);
+}
+body.dark-mode .main-container {
+    background-image: linear-gradient(rgba(35, 34, 42, 0.9), rgba(35, 34, 42, 0.9)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg'); /* CHANGED: Darker overlay */
+}
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 800px) {
