@@ -61,7 +61,7 @@ h2 {
     font-family: var(--header-font);
     font-size: 2.5rem;
     color: var(--accent-color);
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
     margin-top: 0;
     margin-bottom: 0.5rem;
 }
@@ -84,7 +84,7 @@ h2 {
     flex-grow: 1;
     transition: border-color 0.3s;
     background-color: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 canvas {
@@ -106,7 +106,9 @@ canvas {
     display: none;
 }
 
-.file-upload-label, #dark-mode-btn, .emoji-btn {
+.file-upload-label,
+#dark-mode-btn,
+.emoji-btn {
     background-color: var(--accent-color);
     color: white;
     padding: 10px 20px;
@@ -119,81 +121,146 @@ canvas {
     box-shadow: 0 2px 5px rgba(255, 122, 89, 0.4);
 }
 
-.file-upload-label:hover {
+.file-upload-label:hover,
+#dark-mode-btn:hover,
+.emoji-btn:hover {
     background-color: var(--accent-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(255, 122, 89, 0.4);
 }
 
-#dark-mode-btn, .emoji-btn {
+#dark-mode-btn,
+.emoji-btn {
     padding: 10px 14px;
 }
 
-/* NEW: Rule for permanent grey buttons */
-#dark-mode-btn, .emoji-btn {
-    background-color: #d1d1d1;
-    color: #333;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-}
-
-#dark-mode-btn:hover, .emoji-btn:hover {
-    background-color: #bfbfbf;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
 /* --- Emoji Feature Styles --- */
-.emoji-container { position: relative; }
-.emoji-picker { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background-color: var(--pane-bg-light); border: 1px solid var(--border-light); border-radius: 10px; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 10; }
-.emoji-picker.show { display: flex; gap: 10px; }
-.emoji-option { font-size: 1.5rem; cursor: pointer; transition: transform 0.2s; }
-.emoji-option:hover { transform: scale(1.2); }
-.emoji-float-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; z-index: 100; }
+.emoji-container {
+    position: relative;
+}
+
+.emoji-picker {
+    display: none;
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--pane-bg-light);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+}
+
+.emoji-picker.show {
+    display: flex;
+    gap: 10px;
+}
+
+.emoji-option {
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.emoji-option:hover {
+    transform: scale(1.2);
+}
+
+.emoji-float-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 100;
+}
+
 .raining-emoji {
     position: absolute;
     top: -50px;
 }
+
 @keyframes rainFall {
-  0% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(110vh); opacity: 0; }
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(110vh);
+        opacity: 0;
+    }
 }
 
 /* --- Highlights --- */
-.highlight { position: absolute; width: 100%; height: 80px; pointer-events: none; transition: top 0.2s ease-out; box-sizing: border-box; }
-.self { background-image: linear-gradient(to right, rgba(68, 142, 228, 0.3), rgba(68, 142, 228, 0)); }
-.partner { background-image: linear-gradient(to right, rgba(255, 122, 89, 0.3), rgba(255, 122, 89, 0)); }
+.highlight {
+    position: absolute;
+    width: 100%;
+    height: 80px;
+    pointer-events: none;
+    transition: top 0.2s ease-out;
+    box-sizing: border-box;
+}
+
+.self {
+    background-image: linear-gradient(to right, rgba(68, 142, 228, 0.3), rgba(68, 142, 228, 0));
+}
+
+.partner {
+    background-image: linear-gradient(to right, rgba(255, 122, 89, 0.3), rgba(255, 122, 89, 0));
+}
 
 /* --- Dark Mode --- */
 body.dark-mode {
     background-color: var(--background-dark);
     color: var(--text-dark);
 }
+
 body.dark-mode .view-pane {
     background-color: transparent;
 }
+
 body.dark-mode #my-pane {
     border-right-color: var(--border-dark);
 }
+
 body.dark-mode .pdf-view {
     border-color: var(--border-dark);
-    background-color: rgba(45, 43, 55, 0.65); 
+    background-color: rgba(45, 43, 55, 0.65);
     box-shadow: none;
 }
+
 body.dark-mode canvas {
     filter: invert(1) hue-rotate(180deg);
 }
+
 body.dark-mode .emoji-picker {
     border-color: var(--border-dark);
     background-color: var(--pane-bg-dark);
 }
+
 body.dark-mode .main-container {
     background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
 }
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 800px) {
-    .main-container { flex-direction: column; overflow: auto; }
-    .view-pane { width: 100%; height: 100vh; }
-    #my-pane { border-right: none; border-bottom: 2px solid var(--border-light); }
-    body.dark-mode #my-pane { border-bottom-color: var(--border-dark); }
+    .main-container {
+        flex-direction: column;
+        overflow: auto;
+    }
+    .view-pane {
+        width: 100%;
+        height: 100vh;
+    }
+    #my-pane {
+        border-right: none;
+        border-bottom: 2px solid var(--border-light);
+    }
+    body.dark-mode #my-pane {
+        border-bottom-color: var(--border-dark);
+    }
 }
