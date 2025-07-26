@@ -153,15 +153,14 @@ body.dark-mode {
     color: var(--text-dark);
 }
 body.dark-mode .view-pane {
-    background-color: transparent; /* This should be transparent to see the main background */
+    background-color: transparent;
 }
 body.dark-mode #my-pane {
     border-right-color: var(--border-dark);
 }
 body.dark-mode .pdf-view {
     border-color: var(--border-dark);
-    /* CHANGED: This is now semi-transparent so the background image shows through */
-    background-color: rgba(45, 43, 55, 0.85); 
+    background-color: rgba(45, 43, 55, 0.65); /* CHANGED: Made more transparent */
     box-shadow: none;
 }
 body.dark-mode canvas {
@@ -172,7 +171,8 @@ body.dark-mode .emoji-picker {
     background-color: var(--pane-bg-dark);
 }
 body.dark-mode .main-container {
-    background-image: linear-gradient(rgba(35, 34, 42, 0.9), rgba(35, 34, 42, 0.9)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
+    /* CHANGED: Made the overlay less intense to let the background show through */
+    background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
 }
 
 /* --- Mobile Responsiveness --- */
