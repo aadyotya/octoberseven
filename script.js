@@ -11,6 +11,9 @@ const myHighlight = document.getElementById('my-highlight');
 const herHighlight = document.getElementById('her-highlight');
 const connectionStatus = document.getElementById('connection-status');
 const herFileStatus = document.getElementById('her-file-status');
+// NEW: Progress Bar elements
+const myProgressBar = document.getElementById('my-progress-bar');
+const herProgressBar = document.getElementById('her-progress-bar');
 // NEW: Emoji elements
 const emojiBtn = document.querySelector('.emoji-btn');
 const emojiPicker = document.querySelector('.emoji-picker');
@@ -53,12 +56,17 @@ async function getStatus() {
             const highlightTop = otherUser.y_percent * herPdfView.scrollHeight;
             herHighlight.style.top = `${highlightTop - (herHighlight.clientHeight / 2)}px`;
 
+            // Update her progress bar
+            if (herProgressBar) {
+                herProgressBar.style.width = `${otherUser.scroll_percent * 100}%`;
+            }
+
             const scrollableHeight = herPdfView.scrollHeight - herPdfView.clientHeight;
             if (scrollableHeight > 0) {
                 herPdfView.scrollTop = otherUser.scroll_percent * scrollableHeight;
             }
 
-            // NEW: Check for and display new emojis from the other user
+            // Check for and display new emojis from the other user
             if (otherUser.emoji && otherUser.emoji.id !== lastHerEmojiId) {
                 triggerEmojiRain(otherUser.emoji.char, herEmojiContainer);
                 lastHerEmojiId = otherUser.emoji.id;
@@ -123,9 +131,14 @@ myPdfView.addEventListener('mousemove', (e) => {
 myPdfView.addEventListener('scroll', () => {
     const scrollableHeight = myPdfView.scrollHeight - myPdfView.clientHeight;
     if (scrollableHeight > 0) {
-        myState.scroll_percent = myPdfView.scrollTop / scrollableHeight;
+        const scrollPercentage = myPdfView.scrollTop / scrollableHeight;
+        myState.scroll_percent = scrollPercentage;
         sendUpdate();
-    }
+        
+        // Update my own progress bar instantly
+        if (myProgressBar) {
+            myProgressBar.style.width = `${scrollPercentage * 100}%`;
+        }
 });
 
 // NEW: --- 4. Emoji Feature Logic ---
