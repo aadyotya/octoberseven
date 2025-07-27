@@ -106,7 +106,6 @@ canvas {
     display: none;
 }
 
-/* Common styles for all buttons */
 .file-upload-label,
 #dark-mode-btn,
 .emoji-btn {
@@ -119,7 +118,6 @@ canvas {
     font-size: 0.9rem;
 }
 
-/* Orange Upload Buttons */
 .file-upload-label {
     background-color: var(--accent-color);
     color: white;
@@ -132,7 +130,6 @@ canvas {
     box-shadow: 0 4px 8px rgba(255, 122, 89, 0.4);
 }
 
-/* Transparent White Dark Mode & Emoji Buttons */
 #dark-mode-btn,
 .emoji-btn {
     background-color: rgba(255, 255, 255, 0.2);
@@ -149,6 +146,24 @@ canvas {
     transform: translateY(-2px);
 }
 
+/* NEW: --- Progress Bar Styles --- */
+.progress-container {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%; /* Starts empty */
+    border-radius: 4px;
+    transition: width 0.5s ease-out;
+    background-color: var(--accent-color); /* Both bars are now orange */
+}
 
 /* --- Emoji Feature Styles --- */
 .emoji-container {
@@ -262,6 +277,11 @@ body.dark-mode .main-container {
     background-image: linear-gradient(rgba(35, 34, 42, 0.8), rgba(35, 34, 42, 0.8)), url('https://raw.githubusercontent.com/aadyotya/octoberseven/main/background.jpg');
 }
 
+body.dark-mode .progress-container {
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* --- Mobile Responsiveness --- */
 @media (max-width: 800px) {
     .main-container {
@@ -279,33 +299,4 @@ body.dark-mode .main-container {
     body.dark-mode #my-pane {
         border-bottom-color: var(--border-dark);
     }
-    /* --- Style for the GIF in the emoji button --- */
-    .emoji-btn img {
-    width: 20px;
-    height: 20px;
-    vertical-align: middle; /* Helps center the image */
-}
-    /* --- Progress Bar Styles --- */
-.progress-container {
-    width: 100%;
-    height: 8px;
-    background-color: rgba(255, 255, 255, 0.5);
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.progress-bar {
-    height: 100%;
-    width: 0%; /* Starts empty */
-    border-radius: 4px;
-    transition: width 0.5s ease-out;
-    background-color: var(--accent-color); /* Both bars are now orange */
-}
-
-body.dark-mode .progress-container {
-    background-color: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
 }
